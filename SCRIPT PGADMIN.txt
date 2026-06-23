@@ -1,0 +1,450 @@
+
+-- SISTEMA DE SUPRIMENTOS (ALMOXARIFADO/COMPRAS)
+-- Banco de Dados 2
+
+
+DROP TABLE IF EXISTS entrega_departamento  CASCADE;
+DROP TABLE IF EXISTS solicitacao_interna   CASCADE;
+DROP TABLE IF EXISTS recebimento_oc        CASCADE;
+DROP TABLE IF EXISTS item_ordem_compra     CASCADE;
+DROP TABLE IF EXISTS ordem_compra          CASCADE;
+DROP TABLE IF EXISTS estoque               CASCADE;
+DROP TABLE IF EXISTS produto               CASCADE;
+DROP TABLE IF EXISTS departamento          CASCADE;
+DROP TABLE IF EXISTS fornecedor            CASCADE;
+DROP TABLE IF EXISTS funcionario           CASCADE;
+
+
+CREATE TABLE funcionario (
+    id_funcionario SERIAL       PRIMARY KEY,
+    nome           VARCHAR(100) NOT NULL,
+    cargo          VARCHAR(50)  NOT NULL
+);
+
+
+CREATE TABLE fornecedor (
+    id_fornecedor SERIAL       PRIMARY KEY,
+    razao_social  VARCHAR(120) NOT NULL,
+    cnpj          VARCHAR(14)  UNIQUE NOT NULL,
+    telefone      VARCHAR(20)
+);
+
+
+CREATE TABLE produto (
+    id_produto     SERIAL       PRIMARY KEY,
+    descricao      VARCHAR(120) NOT NULL,
+    unidade        VARCHAR(10)  NOT NULL,
+    estoque_minimo NUMERIC(10,2) DEFAULT 0
+);
+
+
+CREATE TABLE departamento (
+    id_departamento SERIAL      PRIMARY KEY,
+    nome            VARCHAR(80) NOT NULL
+);
+
+
+CREATE TABLE estoque (
+    id_estoque       SERIAL        PRIMARY KEY,
+    id_produto       INT           NOT NULL UNIQUE,
+    quantidade_atual NUMERIC(10,2) NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (id_produto) REFERENCES produto(id_produto)
+);
+
+
+
+CREATE TABLE ordem_compra (
+    id_oc          SERIAL      PRIMARY KEY,
+    numero_oc      VARCHAR(20) UNIQUE NOT NULL,
+    id_fornecedor  INT         NOT NULL,
+    id_funcionario INT         NOT NULL,
+    data_oc        DATE        NOT NULL,
+    status         VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',  -- PENDENTE, RECEBIDA, CANCELADA
+    valor_total    NUMERIC(14,2) NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (id_fornecedor)  REFERENCES fornecedor(id_fornecedor),
+    FOREIGN KEY (id_funcionario) REFERENCES funcionario(id_funcionario)
+);
+
+
+
+CREATE TABLE item_ordem_compra (
+    id_item        SERIAL        PRIMARY KEY,
+    id_oc          INT           NOT NULL,
+    id_produto     INT           NOT NULL,
+    quantidade     NUMERIC(10,2) NOT NULL,
+    preco_unitario NUMERIC(12,2) NOT NULL,
+    subtotal       NUMERIC(14,2) NOT NULL,
+
+    FOREIGN KEY (id_oc)      REFERENCES ordem_compra(id_oc),
+    FOREIGN KEY (id_produto) REFERENCES produto(id_produto)
+);
+
+
+CREATE TABLE recebimento_oc (
+    id_recebimento      SERIAL        PRIMARY KEY,
+    id_oc               INT           NOT NULL,
+    id_produto          INT           NOT NULL,
+    id_funcionario      INT           NOT NULL,
+    quantidade_recebida NUMERIC(10,2) NOT NULL,
+    preco_unitario      NUMERIC(12,2) NOT NULL,
+    data_recebimento    DATE          NOT NULL,
+
+    FOREIGN KEY (id_oc)          REFERENCES ordem_compra(id_oc),
+    FOREIGN KEY (id_produto)     REFERENCES produto(id_produto),
+    FOREIGN KEY (id_funcionario) REFERENCES funcionario(id_funcionario)
+);
+
+
+CREATE TABLE solicitacao_interna (
+    id_solicitacao  SERIAL      PRIMARY KEY,
+    id_departamento INT         NOT NULL,
+    id_funcionario  INT         NOT NULL,
+    data_solicitacao DATE       NOT NULL,
+    status          VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',  -- PENDENTE, ATENDIDA, NEGADA
+
+    FOREIGN KEY (id_departamento) REFERENCES departamento(id_departamento),
+    FOREIGN KEY (id_funcionario)  REFERENCES funcionario(id_funcionario)
+);
+
+
+CREATE TABLE item_solicitacao (
+    id_item_solic  SERIAL        PRIMARY KEY,
+    id_solicitacao INT           NOT NULL,
+    id_produto     INT           NOT NULL,
+    quantidade     NUMERIC(10,2) NOT NULL,
+
+    FOREIGN KEY (id_solicitacao) REFERENCES solicitacao_interna(id_solicitacao),
+    FOREIGN KEY (id_produto)     REFERENCES produto(id_produto)
+);
+
+
+CREATE TABLE entrega_departamento (
+    id_entrega     SERIAL        PRIMARY KEY,
+    id_solicitacao INT           NOT NULL,
+    id_departamento INT          NOT NULL,
+    id_produto     INT           NOT NULL,
+    id_funcionario INT           NOT NULL,
+    quantidade     NUMERIC(10,2) NOT NULL,
+    data_entrega   DATE          NOT NULL,
+
+    FOREIGN KEY (id_solicitacao)  REFERENCES solicitacao_interna(id_solicitacao),
+    FOREIGN KEY (id_departamento) REFERENCES departamento(id_departamento),
+    FOREIGN KEY (id_produto)      REFERENCES produto(id_produto),
+    FOREIGN KEY (id_funcionario)  REFERENCES funcionario(id_funcionario)
+);
+
+INSERT INTO funcionario (nome, cargo) VALUES
+('Carlos Silva', 'Gerente de Compras'),
+('Ana Paula Souza', 'Comprador Pleno'),
+('Marcos Antônio', 'Auxiliar de Almoxarifado'),
+('Juliana Costa', 'Supervisor de Logística'),
+('Roberto Alves', 'Diretor Administrativo'),
+('Fernanda Lima', 'Chefe de Departamento - TI'),
+('Ricardo Santos', 'Chefe de Departamento - RH'),
+('Camila Oliveira', 'Chefe de Departamento - Vendas'),
+('Lucas Pereira', 'Auxiliar Administrativo'),
+('Beatriz Rodrigues', 'Almoxarife Chefe');
+
+
+INSERT INTO fornecedor (razao_social, cnpj, telefone) VALUES
+('Distribuidora Alfa Ltda', '11223344000101', '(11) 4002-8922'),
+('Comércio de Papéis Silva', '22334455000102', '(21) 3344-5566'),
+('Tech Sul Informática', '33445566000103', '(51) 3222-1111'),
+('Móveis de Escritório Real', '44556677000104', '(31) 3456-7890'),
+('Limpeza Total Indústria', '55667788000105', '(19) 3876-5432'),
+('Supermercado Atacado Central', '66778899000106', '(81) 3111-2222'),
+('Ferramentas e Cia', '77889900000107', '(41) 3099-8877'),
+('Eletro Materiais Brasil', '88990011000108', '(61) 3555-4433'),
+('Uniformes Executivos Ltda', '99001122000109', '(47) 3322-1100'),
+('Suprimentos Médicos Express', '00112233000110', '(85) 3444-5555');
+
+INSERT INTO produto (descricao, unidade, estoque_minimo) VALUES
+('Papel A4 Report 75g', 'CX', 10.00),
+('Caneta Esferográfica Azul', 'PCT', 5.00),
+('Cadeira de Escritório Ergonômica', 'UN', 2.00),
+('Notebook Institucional Core i5', 'UN', 3.00),
+('Detergente Líquido Neutro 5L', 'GL', 8.00),
+('Café em Pó 500g', 'PCT', 20.00),
+('Cartucho de Tinta HP Preto', 'UN', 5.00),
+('Álcool em Gel 70% 1L', 'FR', 15.00),
+('Teclado USB Padrão', 'UN', 4.00),
+('Pasta Suspensa Plastificada', 'CX', 6.00);
+
+INSERT INTO departamento (nome) VALUES
+('Tecnologia da Informação'),
+('Recursos Humanos'),
+('Financeiro'),
+('Comercial e Vendas'),
+('Marketing'),
+('Jurídico'),
+('Logística e Almoxarifado'),
+('Manutenção e Infraestrutura'),
+('Diretoria Executiva'),
+('Atendimento ao Cliente');
+
+INSERT INTO estoque (id_produto, quantidade_atual) VALUES
+(1, 25.00),
+(2, 14.00),
+(3, 5.00),
+(4, 8.00),
+(5, 12.00),
+(6, 45.00),
+(7, 6.00),
+(8, 30.00),
+(9, 10.00),
+(10, 15.00);
+
+INSERT INTO ordem_compra (numero_oc, id_fornecedor, id_funcionario, data_oc, status, valor_total) VALUES
+('OC-2026-001', 2, 1, '2026-01-10', 'RECEBIDA', 750.00),
+('OC-2026-002', 1, 2, '2026-01-15', 'RECEBIDA', 360.00),
+('OC-2026-003', 3, 2, '2026-02-02', 'RECEBIDA', 14200.00),
+('OC-2026-004', 4, 1, '2026-02-10', 'RECEBIDA', 3500.00),
+('OC-2026-005', 5, 2, '2026-03-01', 'RECEBIDA', 480.00),
+('OC-2026-006', 6, 1, '2026-03-12', 'PENDENTE', 520.00),
+('OC-2026-007', 7, 2, '2026-04-05', 'CANCELADA', 1200.00),
+('OC-2026-008', 8, 1, '2026-05-18', 'PENDENTE', 890.00),
+('OC-2026-009', 3, 2, '2026-06-01', 'PENDENTE', 450.00),
+('OC-2026-010', 10, 1, '2026-06-15', 'PENDENTE', 2300.00);
+
+INSERT INTO item_ordem_compra (id_oc, id_produto, quantidade, preco_unitario, subtotal) VALUES
+(1, 1, 10.00, 50.00, 500.00),
+(1, 2, 5.00, 50.00, 250.00),
+(2, 10, 6.00, 60.00, 360.00),
+(3, 4, 4.00, 3500.00, 14000.00),
+(3, 9, 5.00, 40.00, 200.00),
+(4, 3, 5.00, 700.00, 3500.00),
+(5, 5, 8.00, 60.00, 480.00),
+(6, 6, 26.00, 20.00, 520.00),
+(7, 8, 40.00, 30.00, 1200.00),
+(10, 8, 50.00, 46.00, 2300.00);
+
+INSERT INTO recebimento_oc (id_oc, id_produto, id_funcionario, quantidade_recebida, preco_unitario, data_recebimento) VALUES
+(1, 1, 3, 10.00, 50.00, '2026-01-12'),
+(1, 2, 3, 5.00, 50.00, '2026-01-12'),
+(2, 10, 10, 6.00, 60.00, '2026-01-18'),
+(3, 4, 3, 4.00, 3500.00, '2026-02-05'),
+(3, 9, 3, 5.00, 40.00, '2026-02-05'),
+(4, 3, 10, 5.00, 700.00, '2026-02-15'),
+(5, 5, 3, 8.00, 60.00, '2026-03-05'),
+(1, 1, 10, 5.00, 50.00, '2026-01-13'),
+(2, 10, 3, 4.00, 60.00, '2026-01-19'),
+(3, 4, 10, 2.00, 3500.00, '2026-02-06');
+
+INSERT INTO solicitacao_interna (id_departamento, id_funcionario, data_solicitacao, status) VALUES
+(1, 6, '2026-01-20', 'ATENDIDA'),
+(2, 7, '2026-01-22', 'ATENDIDA'),
+(3, 9, '2026-02-10', 'ATENDIDA'),
+(4, 8, '2026-02-15', 'NEGADA'),
+(5, 9, '2026-03-01', 'PENDENTE'),
+(6, 6, '2026-03-20', 'ATENDIDA'),
+(7, 3, '2026-04-02', 'PENDENTE'),
+(8, 9, '2026-05-10', 'PENDENTE'),
+(9, 5, '2026-06-05', 'ATENDIDA'),
+(10, 9, '2026-06-18', 'PENDENTE');
+
+INSERT INTO item_solicitacao (id_solicitacao, id_produto, quantidade) VALUES
+(1, 1, 2.00),
+(1, 2, 3.00),
+(2, 10, 5.00),
+(3, 1, 1.00),
+(4, 3, 4.00),
+(5, 6, 10.00),
+(6, 8, 2.00),
+(7, 5, 2.00),
+(9, 4, 1.00),
+(10, 2, 5.00);
+
+INSERT INTO entrega_departamento (id_solicitacao, id_departamento, id_produto, id_funcionario, quantidade, data_entrega) VALUES
+(1, 1, 1, 3, 2.00, '2026-01-21'),
+(1, 1, 2, 3, 3.00, '2026-01-21'),
+(2, 2, 10, 10, 5.00, '2026-01-23'),
+(3, 3, 1, 3, 1.00, '2026-02-11'),
+(6, 6, 8, 10, 2.00, '2026-03-22'),
+(9, 9, 4, 3, 1.00, '2026-06-06'),
+(1, 1, 1, 10, 1.00, '2026-01-22'),
+(2, 2, 10, 3, 2.00, '2026-01-24'),
+(3, 3, 1, 10, 1.00, '2026-02-12'),
+(6, 6, 8, 3, 1.00, '2026-03-23');
+
+CREATE INDEX IF NOT EXISTS idx_funcionario_nome
+    ON funcionario (nome);
+
+CREATE INDEX IF NOT EXISTS idx_fornecedor_razao_social
+    ON fornecedor (razao_social);
+
+CREATE INDEX IF NOT EXISTS idx_produto_descricao
+    ON produto (descricao);
+
+CREATE INDEX IF NOT EXISTS idx_oc_status
+    ON ordem_compra (status);
+
+CREATE INDEX IF NOT EXISTS idx_oc_fornecedor
+    ON ordem_compra (id_fornecedor);
+
+CREATE INDEX IF NOT EXISTS idx_oc_data
+    ON ordem_compra (data_oc);
+
+CREATE INDEX IF NOT EXISTS idx_item_oc_id_oc
+    ON item_ordem_compra (id_oc);
+
+CREATE INDEX IF NOT EXISTS idx_item_oc_id_produto
+    ON item_ordem_compra (id_produto);
+
+CREATE INDEX IF NOT EXISTS idx_recebimento_id_oc
+    ON recebimento_oc (id_oc);
+
+CREATE INDEX IF NOT EXISTS idx_recebimento_id_produto
+    ON recebimento_oc (id_produto);
+
+CREATE INDEX IF NOT EXISTS idx_recebimento_data
+    ON recebimento_oc (data_recebimento);
+
+CREATE INDEX IF NOT EXISTS idx_solic_status
+    ON solicitacao_interna (status);
+
+CREATE INDEX IF NOT EXISTS idx_solic_departamento
+    ON solicitacao_interna (id_departamento);
+
+CREATE INDEX IF NOT EXISTS idx_solic_data
+    ON solicitacao_interna (data_solicitacao);
+
+CREATE INDEX IF NOT EXISTS idx_item_solic_id_solic
+    ON item_solicitacao (id_solicitacao);
+
+CREATE INDEX IF NOT EXISTS idx_item_solic_id_produto
+    ON item_solicitacao (id_produto);
+
+CREATE INDEX IF NOT EXISTS idx_entrega_departamento
+    ON entrega_departamento (id_departamento);
+
+CREATE INDEX IF NOT EXISTS idx_entrega_produto
+    ON entrega_departamento (id_produto);
+
+CREATE INDEX IF NOT EXISTS idx_entrega_data
+    ON entrega_departamento (data_entrega);
+
+
+CREATE OR REPLACE PROCEDURE sp_inserir_produto(
+    p_descricao VARCHAR(120),
+    p_unidade VARCHAR(10),
+    p_estoque_minimo NUMERIC(10,2),
+    OUT p_id_gerado INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+
+    INSERT INTO produto (descricao, unidade, estoque_minimo)
+    VALUES (p_descricao, p_unidade, p_estoque_minimo)
+    RETURNING id_produto INTO p_id_gerado;
+
+
+    INSERT INTO estoque (id_produto, quantidade_atual)
+    VALUES (p_id_gerado, 0.00);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_registrar_recebimento(
+    p_id_oc INT,
+    p_id_produto INT,
+    p_id_funcionario INT,
+    p_quantidade NUMERIC(10,2),
+    p_preco_unitario NUMERIC(12,2)
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+
+    INSERT INTO recebimento_oc (id_oc, id_produto, id_funcionario, quantidade_recebida, preco_unitario, data_recebimento)
+    VALUES (p_id_oc, p_id_produto, p_id_funcionario, p_quantidade, p_preco_unitario, CURRENT_DATE);
+
+
+    UPDATE estoque 
+    SET quantidade_atual = quantidade_atual + p_quantidade
+    WHERE id_produto = p_id_produto;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE sp_registrar_entrega(
+    p_id_solicitacao INT,
+    p_id_departamento INT,
+    p_id_produto INT,
+    p_id_funcionario INT,
+    p_quantidade NUMERIC(10,2)
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_estoque_disponivel NUMERIC(10,2);
+BEGIN
+
+    SELECT quantidade_atual INTO v_estoque_disponivel 
+    FROM estoque 
+    WHERE id_produto = p_id_produto;
+
+    IF v_estoque_disponivel < p_quantidade THEN
+        RAISE EXCEPTION 'Saldo insuficiente em estoque para o produto %.', p_id_produto;
+    END IF;
+
+    INSERT INTO entrega_departamento (id_solicitacao, id_departamento, id_produto, id_funcionario, quantidade, data_entrega)
+    VALUES (p_id_solicitacao, p_id_departamento, p_id_produto, p_id_funcionario, p_quantidade, CURRENT_DATE);
+
+    UPDATE estoque 
+    SET quantidade_atual = quantidade_atual - p_quantidade
+    WHERE id_produto = p_id_produto;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION fn_impedir_exclusao_produto()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF (SELECT quantidade_atual FROM estoque WHERE id_produto = OLD.id_produto) > 0 THEN
+        RAISE EXCEPTION 'Não é permitido excluir um produto que ainda possui saldo em estoque.';
+    END IF;
+    
+    DELETE FROM estoque WHERE id_produto = OLD.id_produto;
+    
+    RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER tg_antes_deletar_produto
+BEFORE DELETE ON produto
+FOR EACH ROW
+EXECUTE FUNCTION fn_impedir_exclusao_produto();
+
+
+CREATE OR REPLACE VIEW vw_dados_produtos AS
+SELECT 
+    p.id_produto,
+    p.descricao,
+    p.unidade,
+    p.estoque_minimo,
+    COALESCE(e.quantidade_atual, 0) AS estoque_atual,
+    CASE 
+        WHEN COALESCE(e.quantidade_atual, 0) <= p.estoque_minimo THEN 'COMPRAR'
+        ELSE 'OK'
+    END AS status_estoque
+FROM produto p
+LEFT JOIN estoque e ON p.id_produto = e.id_produto;
+
+CREATE OR REPLACE VIEW vw_consumo_departamentos AS
+SELECT 
+    d.nome AS departamento,
+    p.descricao AS produto,
+    SUM(ed.quantidade) AS total_entregue
+FROM entrega_departamento ed
+JOIN departamento d ON ed.id_departamento = d.id_departamento
+JOIN produto p ON ed.id_produto = p.id_produto
+GROUP BY d.nome, p.descricao;
+
+CREATE OR REPLACE VIEW vw_compras_pendentes AS
+SELECT 
+    oc.numero_oc,
+    f.razao_social AS fornecedor,
+    oc.data_oc,
+    oc.valor_total
+FROM ordem_compra oc
+JOIN fornecedor f ON oc.id_fornecedor = f.id_fornecedor
+WHERE oc.status = 'PENDENTE';
